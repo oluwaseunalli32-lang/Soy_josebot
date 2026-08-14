@@ -1,6 +1,7 @@
 import os
 import time
 import logging
+import asyncio
 from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
@@ -142,8 +143,8 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.message.reply_text(about_text, parse_mode="Markdown")
 
 
-def main() -> None:
-    """Starts the bot application."""
+async def main() -> None:
+    """Starts the bot application with explicit async event loop handling."""
     if not TOKEN:
         logger.error("BOT_TOKEN environment variable missing. Exiting...")
         return
@@ -156,8 +157,16 @@ def main() -> None:
     app.add_handler(CommandHandler("function", my_function))
 
     logger.info("Bot started successfully. Listening for commands...")
-    app.run_polling()
+
+    # Explicit async context runner compatible with Python 3.14+
+    async with app:
+        await app.start()
+        await app.updater.start_polling()
+        await asyncio.Event().wait()
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Bot stopped.")
